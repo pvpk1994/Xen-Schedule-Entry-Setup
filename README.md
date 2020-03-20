@@ -10,7 +10,7 @@ Note: harcoded path for this setting lies in all of .sh files, do change those t
 
 4. Navigate back to /home/* directory where the resident uuid_* files reside.
 
-5. For RRP-Xen V2.0 the shell script needs to invoke rrp_multi_resource.c for multi core implementation and for RRP-Xen V1.0 the shell script accordingly has to invoke rrp_single_resource.c which includes single-cpu implementation.
+5. For RRP-Xen V2.0, the shell script needs to invoke rrp_sched_entry_mc.c for multi core implementation and for RRP-Xen V1.0 the shell script accordingly has to invoke rrp_single_resource.c which includes single-cpu implementation.
    NOTE: For single core, only 1 cpu needs to be setup in the RRP-Scheduler operated cpupool 
 
 6. run ./uuid_automation.sh script which initially sets up the DomUs in a blocked state ready for the next stage, building process.
