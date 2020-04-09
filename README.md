@@ -23,9 +23,9 @@ Case Study on Domains/Schedule Entries with following Configurations: {DomU4 af:
 
 CPU-ID -- DOMAIN-ID MAP
 --------------------------
-  1    --  7
-  3    --  4
-  3    --  5
+  1    --  7,
+  3    --  4,
+  3    --  5,
   3    --  6
 ------------------------
 -> we know 4/5 is going to take up a dedicated CPU, which is 1 here. Therefore navigate to DomuX.cfg that takes this setting and add the following: cpus="1" #implies DomuX_0 is bound to only run on PCPU #1
