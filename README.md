@@ -35,20 +35,34 @@ CPU-ID -- DOMAIN-ID MAP
 xl command execution sequences for these Domain Config Settings:
 ----------------------------------------------------------------
 Follow this execution order after accomplishing the above steps:
+
 -> xl cpupool-create for aaf_pool
+
 -> xl cpupool-cpu-remove Pool-0 3
+
 -> xl cpupool-cpu-add aaf_pool 3
+
 -> cd /etc/xen
+
 -> xl create {domuX_1, domuX_2, domuX_3}.cfg for aaf_pool
+
 -> xl cpupool-cpu-remove Pool-0 1
+
 -> xl cpupool-cpu-add aaf_pool 1
+
 -> cd /etc/xen
+
 -> xl create domuX_0.cfg for aaf_pool
+
 -> Now uncomment the schedule_set fn in rrp schedule entry simulator and run the shell script to set all the domains into blocked state
+
 
 Desired Result:
 --------------
 Domu4   - Blocked (b)
+
 Domu5   - Blocked (b)
+
 Domu6   - Blocked (b)
+
 Domu7   - Blocked (b)
