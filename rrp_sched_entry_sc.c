@@ -552,12 +552,12 @@ int find_delta(struct node* avail_set, int period, int wcet, int wcet_left)
 {
     //construct standard regular partitions (needs to add 1 because time slice index counts from 1
     int *standard_p1 = malloc(sizeof(int)*period);
-    for(int i=0; i < period; i++)
+    for(int i=0; i < wcet; i++)
     {
         standard_p1[i] = (int)(floor(i*period/wcet))%period;
     }
     int *standard_p2 = malloc(sizeof(int)*period);
-    for(int i=0; i < period; i++)
+    for(int i=0; i < wcet_left; i++)
     {
         standard_p2[i] = (int)(floor(i*period/wcet_left))%period;
     }
