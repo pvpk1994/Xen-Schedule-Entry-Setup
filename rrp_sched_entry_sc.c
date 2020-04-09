@@ -390,7 +390,7 @@ int main()
     {
         char buf[30];
        // itoa(head_2->id,uuid_new[k],64);
-       //printf("Return Val:%d\n",uuid_parse(head_2->id,sched_aaf.schedule[k].dom_handle));
+       printf("Return Val:%d\n",uuid_parse(head_2->id,sched_aaf.schedule[k].dom_handle));
        sched_aaf.schedule[k].wcet = DOMN_RUNTIME(30);
 
       // if(sched_aaf.schedule[k].wcet ==0)
