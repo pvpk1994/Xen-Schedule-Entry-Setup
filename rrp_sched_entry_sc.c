@@ -329,6 +329,11 @@ int main()
     sched_entry_t schedule[num_minor_frames], *scheduler;
     int A_val[num_minor_frames];
     xc_interface *xci = xc_interface_open(NULL,NULL,0);
+
+    int cpu_id = get_cpu_id();
+    if(cpu_id!=-1)
+        sched_aaf.cpu_id = cpu_id;
+
     printf("Enter the schedule WCET:");
     for(int i=0; i<num_minor_frames; i++)
     {
@@ -653,4 +658,33 @@ struct node *partition_single(sched_entry_t *partitions, int hp, struct node* av
     //printf("The result from partition_single:\n");
     //print_list(result);
     return result;
+}
+
+/* ********* get_cpu_id ************
+ * @return: Returns the id of the first CPU in the pool (if there are multiple).
+ *          The cpu ids must be written to /home/rtlabuser/pool_uuid/rrp_cpus_list.txt in advance.
+ *          If no available CPU id is found there, the function returns -1.
+ * *********************************/
+int get_cpu_id()
+{
+    FILE *filer;
+    filer = fopen("/home/rtlabuser/pool_uuid/rrp_cpus_list.txt", "r");
+    if(filer == NULL)
+    {
+        perror("fopen(rrp_cpus_list.txt)\n");
+    }
+    char *token;
+    //read in the first cpu id and return.
+    if(filer != NULL)
+    {
+        char line[20];
+        while(fgets(line, sizeof(line), filer)!= NULL)
+        {
+            token = strtok(line, s);
+            int cpu_id = atoi(token);
+            fclose(filer);
+            return cpu_id;
+        }
+    return -1;
+    fclose(filer);
 }
