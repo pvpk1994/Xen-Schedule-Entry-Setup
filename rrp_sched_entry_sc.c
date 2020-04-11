@@ -3,8 +3,8 @@
  * Author:: Pavan Kumar Paluri, Guangli Dai
  * Copyright 2019-2020 - RTLAB UNIVERSITY OF HOUSTON */
 // Created by Pavan Kumar  Paluri  on 2019-07-22.
-// ---------------------------------------------
-// Last upadted on April-11, 2020
+// --------------------------------------------------
+// Last upadted on April-11, 2020 -[fixed cpu ID issue]
 // --------------------------------------------------------------------------------------
 //  NOTE:: now() in Xen hypervisor space always measures time in Nanoseconds time units.
 // Therefore, wcet being passed to the hypervisor space should also be in Nanoseconds
@@ -674,6 +674,7 @@ int get_cpu_id()
         perror("fopen(rrp_cpus_list.txt)\n");
     }
     char *token;
+    const char s[2] = ",";
     //read in the first cpu id and return.
     if(filer != NULL)
     {
@@ -685,6 +686,7 @@ int get_cpu_id()
             fclose(filer);
             return cpu_id;
         }
+    }
     return -1;
     fclose(filer);
 }
