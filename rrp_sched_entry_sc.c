@@ -4,7 +4,7 @@
  * Copyright 2019-2020 - RTLAB UNIVERSITY OF HOUSTON */
 // Created by Pavan Kumar  Paluri  on 2019-07-22.
 // ---------------------------------------------
-// Last upadted on April-8, 2020
+// Last upadted on April-11, 2020
 // --------------------------------------------------------------------------------------
 //  NOTE:: now() in Xen hypervisor space always measures time in Nanoseconds time units.
 // Therefore, wcet being passed to the hypervisor space should also be in Nanoseconds
