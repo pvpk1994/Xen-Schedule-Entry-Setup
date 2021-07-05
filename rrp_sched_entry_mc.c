@@ -1,14 +1,15 @@
 /* RRP MULTI CORE Schedule Generator (MulZ)
- * Author:: Pavan Kumar Paluri, Guangli Dai
- * Copyright 2019-2020 - RTLAB UNIVERSITY OF HOUSTON */
+ * Author(s):: Pavan Kumar Paluri, Guangli Dai
+ * Copyright 2019-2021 - RTLAB UNIVERSITY OF HOUSTON */
 // Created by Pavan Kumar  Paluri
-// Year: 2020
+// Year: 2020-2021
 // Month: Feb-Mar
-// Last Updated: April-9, 2020
+// Last Updated: July-4, 2021
 
 /* ********** UPDATE *************
  * Runnable Version: Xen_Supported Schedule Entries file for RRP_MULZ_Multi_Core residing in Xen hypervisor
  * Otherwise working perfectly alright!
+ * Added a new entry in the lanuch table structure that takes # of CPUs scheduled under RRP-Xen. (Not an optimized solution but an efficient solution involves modification of codes in xen/tool/libxc/xc_aaf.c  and xen/xen/include/public/sysctl.h - July 4th, 2021...
  * ******************************/
 
 #include <stdio.h>
@@ -758,6 +759,7 @@ bool Mul_Z(sched_entry_t* partitions, struct pcpu *pc, int cpu_pool_id)
              * TODO: Example: PCPUs 2-4 {2,3,4} so it will be easy to modify it here.. */
 
 #ifdef RRP_XEN_VERSION_TWO
+            sched_aaf[i].cpu_count = RRP_PCPUS;
             sched_aaf[i].cpu_id = pc[rrp_cpus[i]].cpu_id;
             sched_aaf[i].hyperperiod = hyper_period_MulZ(RRP_MulZ, count)*TIME_SLICE_LENGTH;
             sched_aaf[i].num_schedule_entries = list_length(head2);
