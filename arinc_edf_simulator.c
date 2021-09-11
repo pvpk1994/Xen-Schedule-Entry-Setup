@@ -30,7 +30,7 @@
 
 typedef int64_t s_time_t;
 #define MILLISECS(_ms)  (((s_time_t)(_ms)) * 1000000UL )
-#define DOMN_RUNTIME    MILLISECS(30) // Default runtime of 30ms timeslice
+#define DOMN_RUNTIME    MILLISECS(50) // Default runtime of 30ms timeslice
 #define UUID_READ 1024
 
 struct partition {
@@ -154,7 +154,8 @@ for(int i=0; i < number_of_partitions; i++)
         printf("Domain Handle Copied: %X\n", *sched.sched_entries[i].dom_handle);
         printf("uuid_parse return val: %d\n", uuid);
 #endif
-        sched.sched_entries[i].vcpu_id = 0;
+	/* Let there be i VCPUs such that there is a corresponding VCPU for each schedule entry */
+        sched.sched_entries[i].vcpu_id = i;
         sched.sched_entries[i].runtime = DOMN_RUNTIME;
     }
     int set_result;
