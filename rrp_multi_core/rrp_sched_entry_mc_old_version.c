@@ -1,14 +1,14 @@
-/* RRP MULTI CORE Schedule Generator (MulZ)
- * Author:: Pavan Kumar Paluri, Guangli Dai
- * Copyright 2019-2020 - RTLAB UNIVERSITY OF HOUSTON */
 // Created by Pavan Kumar  Paluri
+// RRP-Xen Version 2.0 Schedule Entry File
+// Author: Pavan Kumar Paluri
+// Copyright: University of Houston - Real Time Systems Laboratory
 // Year: 2020
 // Month: Feb-Mar
-// Last Updated: April-9, 2020
+// Last Updated on March 19, 2020
 
 /* ********** UPDATE *************
- * Runnable Version: Xen_Supported Schedule Entries file for RRP_MULZ_Multi_Core residing in Xen hypervisor
- * Otherwise working perfectly alright!
+ * Runnable Version: Xen Supported Scehdule-Entries Setup File for RRP-Xen 2.0
+ * Oterwise working perfectly alright!
  * ******************************/
 
 #include <stdio.h>
@@ -106,7 +106,7 @@ sched_entry_t* dom_comp(sched_entry_t *);
 sched_entry_t* dom_af_comp(sched_entry_t *);
 struct node* load_timeslices(struct node*,int );
 void getA_calc(sched_entry_t *, int, int);
-struct node *partition_single(sched_entry_t *partitions, int hp, struct node* avail, int count);
+struct node* Partition_single(sched_entry_t*,int,struct node*, int);
 struct pcpu* load_pcpus(struct pcpu*);
 bool Mul_Z(sched_entry_t*, struct pcpu*, int);
 int MulZ_FFD_Alloc(double, struct pcpu*);
@@ -312,7 +312,7 @@ int main()
     //print_list(load_timeslices(head, hyper_period(scheduler)));
     // Returns an unsorted timeslice-domain Pair
     // Need to sort it based on the timeslices....
- //   head_2 = partition_single(scheduler, hyper_period(scheduler), head_1);
+ //   head_2 = Partition_single(scheduler, hyper_period(scheduler), head_1);
 
 
     // ---------------- MULZ ZONE -------------------
@@ -480,153 +480,59 @@ void getA_calc(sched_entry_t *sched, int hp, int count)
 
 struct node* load_timeslices(struct node* head, int hp)
 {
-    for(int i=1;i<=hp;++i)
+    for(int i=0;i<hp;++i)
         append(&head,i,0);
     return head;
 }
 
-/* ********* check_delta ************
- * @param: node* avail_set: A list of time slices available now.
- * @param: int * standard_p: An array representing T(p, q, 0)
- * @param: int wcet: The length of standard_p.
- * @param: int delta: The right shifted value of the standar_p to be tested.
- * @param: int period: The period of the current partition.
- * @return: Returns true if T(p, q, delta) is available in the avail_set,
- *          Otherwise, return false.
- * *********************************/
-bool check_delta(struct node* avail_set, int * standard_p, int wcet, int delta, int period)
+struct node *Partition_single(sched_entry_t *sched, int hp, struct node* Node, int count)
 {
-    for(int i=0; i < wcet; i++)
-    {
-        int t_now = (standard_p[i] + delta)%period+1;
-        if(search(avail_set, t_now)==false)
-            return false;
-    }
-    return true;
-}
 
-/* ********* find_delta ************
- * @param: node* avail_set: A list of time slices available now.
- * @param: int period: The period of the current partition.
- * @param: int wcet: The wcet of the current partition.
- * @param: int wcet_left: The wcet_left after this partition is allocated.
- * @return: Returns the delta1 so that T(period, wcet, delta1) U T(period, wcet_left, delta2) = avail_set
-            and the two partitions do not overlap. If no such delta1 and delta2 can be found, return -1.
- * *********************************/
-int find_delta(struct node* avail_set, int period, int wcet, int wcet_left)
-{
-    //construct standard regular partitions (needs to add 1 because time slice index counts from 1
-    printf("find_delta: %d, %d, %d.\n", period, wcet, wcet_left);
-    int *standard_p1 = malloc(sizeof(int)*period);
-    for(int i=0; i < period; i++)
-    {
-        standard_p1[i] = (int)(floor(i*period/wcet))%period;
-    }
-    int *standard_p2 = malloc(sizeof(int)*period);
-    for(int i=0; i < period; i++)
-    {
-        standard_p2[i] = (int)(floor(i*period/wcet_left))%period;
-    }
-    for(int delta1=0; delta1 < period; delta1++)
-    {
-        if(check_delta(avail_set, standard_p1, wcet, delta1, period))
-        {
-	    printf("delta1 found: %d.\n", delta1);
-            for(int delta2=0; delta2 < period; delta2++)
-            {
-                if(check_delta(avail_set, standard_p2, wcet_left, delta2, period))
-                    return delta1;
-            }
-        }
-    }
-    return -1;
-}
-
-/* ********* partition_single ************
- * @param: sched_entry_t * partitions: An array of sched_entry_t, stores the partitions' information.
- * @param: int hp: The hyper-period calculated based on partitions' approximate availability factors.
- * @param:  node* avail: Available time slices now, ranges from 0 to hp - 1.
- * @return: returns array of struct pcpus
- * *********************************/
-struct node *partition_single(sched_entry_t *partitions, int hp, struct node* avail,int count)
-{
-    //Initialize the time slice list
-    struct node *result = NULL;
-    // iterate through sorted schedule entry list (partitions)
+    struct node *Reader = NULL;
+    // iterate through sorted schedule entry list
+    printf("------------------------------\n");
     for(int i=0;i< count;i++)
     {
-	printf("Handling partition %s.\n", partitions[i].id);
-        // Init a new list to record the time slices allocated.
+        // init hp_now to the current size of timeslice list
+        int hp_now = list_length(Node);
+       // printf("SIZE:%d\n",hp_now);
+
+        // Init a new list
         struct node *occupied_time_index=NULL;
-        //allocate time slices based on different wcet of the current partition
-        if(partitions[i].wcet!=1)
+        for(int k=0;k <arr[i];k++)
         {
-	    printf("Finding delta.\n");
-            //find available delta first
-            int avail_length = list_length(avail);
-	    print_list(avail);
-	    printf("wcet now: %d, %d.\n", (int)(avail_length * partitions[i].period/hp), partitions[i].wcet);
-            int delta1 = find_delta(avail, partitions[i].period, partitions[i].wcet, (int)(avail_length * partitions[i].period/hp) - partitions[i].wcet);
-            if(delta1 == -1)
-            {
-                printf("Unschedulable partitions with no available delta!\n");
-                return NULL;
-            }
-            //utilize the delta found to allocate time slices to partitions[i]
-            for(int l=0; l < hp/partitions[i].period; l++)
-            {
-                for(int k=0; k < partitions[i].wcet; k++)
-                {
-                    int index_now = (int)(floor(k*partitions[i].period/partitions[i].wcet) + delta1)
-                                    %partitions[i].period + l * partitions[i].period + 1;
-                    if(search(avail, index_now)==false)
-                    {
-                        printf("Time slice %d is allocated redundantly!\n", index_now);
-                        return NULL;
-                    }
-                    append(&occupied_time_index, index_now, 0);
-                    append(&result, index_now, partitions[i].id);
-                }
-            }
+         // Assignment of calculated timeslices to a partition
+         int index_now = (int)(floor(k*hp_now/arr[i]))%hp_now;
+         append(&occupied_time_index,index_now,0);
+         //printf("Index Now:%d\n",index_now);
+
+         printf("Assigning timeslice %d to Domain %s\n",get_i(Node,index_now),sched[i].id);
+         append(&Reader,get_i(Node,index_now),sched[i].id);
+
+         // Assign timeslices calculated above to Partition_i
+         //  under progress...
+
         }
-        else
-        {
-	    printf("In else.\n");
-            //retrieve the smallest time slice available now
-            int index = get_i(avail, 0);
-            //check whether time is in feasible range.
-            if(index > partitions[i].period)
-            {
-                printf("Unschedulable partitions with no available time slices!\n");
-		printf("Partition failed: %d, %d\n", partitions[i].period, partitions[i].wcet);
-                return NULL;
-            }
-            //allocate time slices to partition[i]
-            for(int l= 0;l<hp/partitions[i].period;l++)
-            {
-                int index_now = index + l * partitions[i].period;
-                append(&occupied_time_index, index_now, 0);
-                append(&result, index_now, partitions[i].id);
-            }
-        }
-        //update time slices left
         struct node *temp=NULL;
-        for(int i=1;i<=hp;i++)
+        for(int x=0; x < hp_now; x++)
         {
-            if(search(avail,i)==true && search(occupied_time_index,i)== false)
+            if(search(occupied_time_index, x) == false)
                 // insert the ith element of linked list with head "Node"
-                append(&temp,i,0);
+                append(&temp, get_i(Node, x), NULL);
         }
+        // copy(old, new) {old->new}
         //print_list(temp);
-        avail=copy(temp,avail);
+        Node=copy(temp,Node);
         //print_list(Node);
 
 
     }
-    //printf("The result from partition_single:\n");
-    //print_list(result);
-    return result;
+    printf("------------------------------\n");
+    print_list(Reader);
+    printf("------------------------------\n");
+    return Reader;
 }
+
 
 /* ********* Load PCPUS ************
  * @param: Void
@@ -649,10 +555,9 @@ struct pcpu* load_pcpus(struct pcpu *pcpu_t)
 }
 
 /* ************* MUL-Z ************
- * @param: sched_entry_t* mulZ: An array of struct sched_entry_t, which stores the information of partitions.
- * @param: pcpu* pc: An array of struct pcpu.
- * @param: int cpu_pool_id: The id of the current cpu pool.
- * @return: Returns true when schedulable and false otherwise.
+ * @param: sched_mulZ: pointer to struct sched_entry_t
+ * @param: pcpu_t: pointer to struct pcpu
+ * return: a bool param
  * ********************************/
 bool Mul_Z(sched_entry_t* mulZ, struct pcpu *pc, int cpu_pool_id)
 {
@@ -718,7 +623,7 @@ bool Mul_Z(sched_entry_t* mulZ, struct pcpu *pc, int cpu_pool_id)
             }
         }
         printf("Count Val:%d\n", count);
-        printf("Partition Single invoked for CPU: %d..\n", pc[rrp_cpus[i]].cpu_id);
+        printf("Partition Singe invoked for CPU: %d..\n", pc[rrp_cpus[i]].cpu_id);
         // Invoke Partition-Single for Each PCPU
         /* *************** VALID PER-CPU ZONE ************** */
         if(count != 0) {
@@ -727,7 +632,7 @@ bool Mul_Z(sched_entry_t* mulZ, struct pcpu *pc, int cpu_pool_id)
 
             head_1 = load_timeslices(head, hyper_period_MulZ(RRP_MulZ, count));
             getA_calc(RRP_MulZ, hyper_period_MulZ(RRP_MulZ, count), count);
-            head2 = partition_single(RRP_MulZ, hyper_period_MulZ(RRP_MulZ, count), head_1, count);
+            head2 = Partition_single(RRP_MulZ, hyper_period_MulZ(RRP_MulZ, count), head_1, count);
             // Sort the time-slices using Merge Sort
             head2 = Merge_Sort(&head2);
             printf("------------------------------\n");
@@ -825,8 +730,8 @@ int MulZ_FFD_Alloc(double af, struct pcpu* pcpu_t) {
         num_frac = z_approx(af, fixed_list[i]);
         int first_elem = (int)vector_get(&num_frac, 0);
         int second_elem = (int)vector_get(&num_frac, 1);
-        //printf("num_frac[0]: %d\n", first_elem);
-        //printf("num_frac[1]: %d\n", second_elem);
+        printf("num_frac[0]: %d\n", first_elem);
+        printf("num_frac[1]: %d\n", second_elem);
         double num = (double)first_elem/second_elem;
         if(num < smallest)
         {
