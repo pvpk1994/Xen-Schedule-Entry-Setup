@@ -1,15 +1,14 @@
 /* RRP MULTI CORE Schedule Generator (MulZ)
- * Author(s):: Pavan Kumar Paluri, Guangli Dai
- * Copyright 2019-2021 - RTLAB UNIVERSITY OF HOUSTON */
+ * Author:: Pavan Kumar Paluri, Guangli Dai
+ * Copyright 2019-2020 - RTLAB UNIVERSITY OF HOUSTON */
 // Created by Pavan Kumar  Paluri
-// Year: 2020-2021
+// Year: 2020
 // Month: Feb-Mar
-// Last Updated: July-4, 2021
+// Last Updated: April-9, 2020
 
 /* ********** UPDATE *************
  * Runnable Version: Xen_Supported Schedule Entries file for RRP_MULZ_Multi_Core residing in Xen hypervisor
  * Otherwise working perfectly alright!
- * Added a new entry in the lanuch table structure that takes # of CPUs scheduled under RRP-Xen. (Not an optimized solution but an efficient solution involves modification of codes in xen/tool/libxc/xc_aaf.c  and xen/xen/include/public/sysctl.h - July 4th, 2021...
  * ******************************/
 
 #include <stdio.h>
@@ -110,7 +109,7 @@ void getA_calc(sched_entry_t *, int, int);
 struct node *partition_single(sched_entry_t *partitions, int hp, struct node* avail, int count);
 struct pcpu* load_pcpus(struct pcpu*);
 bool Mul_Z(sched_entry_t*, struct pcpu*, int);
-int MulZ_FFD_Alloc(int *, int *, struct pcpu*);
+int MulZ_FFD_Alloc(double, struct pcpu*);
 Vector z_approx(double, int);
 // ------ MERGE SORT FUNCTION PROTOTYPES ---------
 void Half_Split(struct node*, struct node**, struct node**);
@@ -259,57 +258,49 @@ struct node *copy(struct node *org, struct node *new)
 
 
 
-/* ********* main function ************
- * This function is the entry of the program.
- * It reads in system data and user input first.
- * It then invokes MulZ to generate a schedule and send the schedule to the kernel.
- * *********************************/
+// MAIN
 int main()
 {
-    //retrieve the system information.
     FILE *file;
     int pool_id = poolid(file);
     uuid = uu_id(file);
     rrp_valid_cpus(file);
 
-    //retrieve the user input.
-    sched_entry_t partitions[NUM_ENTRIES], *sorted_partitions;
-    //sched_entry_t *scheduler;//Tobe delted: never used.
-    //int A_val[NUM_ENTRIES];//To be deleted: never used.
-    printf("Enter the partitions' WCET:");
+    sched_entry_t schedule[NUM_ENTRIES], *scheduler, *scheduler_mul_z;
+    int A_val[NUM_ENTRIES];
+
+    printf("Enter the schedule WCET:");
     for(int i=0; i<NUM_ENTRIES; i++)
     {
-        scanf("%d",&partitions[i].wcet);
+        scanf("%d",&schedule[i].wcet);
     }
-    printf("Enter the partitions' Periods:");
+    printf("Enter the schedule's Periods:");
     for(int i=0; i<NUM_ENTRIES; i++)
     {
-        scanf("%d",&partitions[i].period);
+        scanf("%d",&schedule[i].period);
     }
 
     for(int i=0; i< NUM_ENTRIES; i++)
     {
-         partitions[i].id = malloc(UUID_READ);
-         strncpy(partitions[i].id, uuid[i], UUID_READ);
-         partitions[i].index = i;
-       // partitions[i].id = i;
-        printf("WCET of partitions[%d] is %d\n ",i, partitions[i].wcet);
-        printf("Period of partitions[%d] is %d\n",i, partitions[i].period);
+         schedule[i].id = malloc(UUID_READ);
+         strncpy(schedule[i].id, uuid[i], UUID_READ);
+         schedule[i].index = i;
+       // schedule[i].id = i;
+        printf("WCET of schedule[%d] is %d\n ",i, schedule[i].wcet);
+        printf("Period of schedule[%d] is %d\n",i, schedule[i].period);
     }
 
-    /* To be deleted: unused.
     int wcet[2] ={13,15};
     printf("Return Val:%d\n",domain_handle_comp(wcet[0],wcet[1]));
     int a = 34;
     int b = 45;
     int *avail_ts;
     swap(a,b);
-    */
-  //  scheduler = dom_comp(partitions);
+  //  scheduler = dom_comp(schedule);
   /*
     for(int i=0;i <NUM_ENTRIES;i++) {
-        printf(" partitions WCET[%d]= %d\n", i, scheduler[i].wcet);
-        printf(" partitions Period[%d]= %d\n", i, scheduler[i].period);
+        printf(" schedule WCET[%d]= %d\n", i, scheduler[i].wcet);
+        printf(" schedule Period[%d]= %d\n", i, scheduler[i].period);
     }
   */
   //  getA_calc(scheduler, hyper_period(scheduler));
@@ -327,21 +318,21 @@ int main()
     // ---------------- MULZ ZONE -------------------
     struct pcpu* pcpu_t;
 
-    // Allocate mem for RRP_PCPUs count, the current version assumes the number of pcpu is less than 10.
+    // Allocate mem for RRP_PCPUs count
     pcpu_t = (struct pcpu*)calloc(10, sizeof(struct pcpu));
 
-    // Load PCPUs into pcpu_t
+    // Load PCPUs now
     pcpu_t = load_pcpus(pcpu_t);
     // Priority Q for Schedule Entries ( Sorted in Non-Increasing Order)
-    sorted_partitions = dom_af_comp(partitions);
+    scheduler_mul_z = dom_af_comp(schedule);
 
     for(int i=0;i <NUM_ENTRIES;i++) {
-        printf(" Partition[%d] has AF: %f\n", i, (double)sorted_partitions[i].wcet/sorted_partitions[i].period);
+        printf(" Partition[%d] has AF: %f\n", i, (double)scheduler_mul_z[i].wcet/scheduler_mul_z[i].period);
 
-        if((double)sorted_partitions[i].wcet/sorted_partitions[i].period);
+        if((double)scheduler_mul_z[i].wcet/scheduler_mul_z[i].period);
     }
     // Time to Invoke Mul-Z
-    Mul_Z(sorted_partitions, pcpu_t, pool_id);
+    Mul_Z(scheduler_mul_z, pcpu_t, pool_id);
 
     // Deleting an entry
   //  head =delete_entry(head_1,0);
@@ -397,11 +388,6 @@ sched_entry_t *dom_comp(sched_entry_t sched[])
     return sched;
 }
 
-/* ********* dom_af_comp ************
- * @param: sched_entry_t sched[]: An array of partitions
- * @return: Returns an array of sched_entry_t, 
- *          which is sorted by availability factor in non-increasing order.
- * *********************************/
 sched_entry_t *dom_af_comp(sched_entry_t sched[])
 {
     int i,j;
@@ -421,16 +407,15 @@ sched_entry_t *dom_af_comp(sched_entry_t sched[])
                 sched[i].period = sched[j].period;
                 sched[j].period = temp1;
 
-		/*
-        		temp3 = sched[i].index;
-        		sched[i].index = sched[j].index;
-        		sched[j].index = temp3;
-		*/
-                /*
-                    temp2 = sched[i].id;
-                    sched[i].id = sched[j].id;
-                    sched[j].id = temp2;
-                */
+		temp3 = sched[i].index;
+		sched[i].index = sched[j].index;
+		sched[j].index = temp3;
+
+            /*
+                temp2 = sched[i].id;
+                sched[i].id = sched[j].id;
+                sched[j].id = temp2;
+            */
                 strcpy(temp2, sched[i].id);
                 strcpy(sched[i].id, sched[j].id);
                 strcpy(sched[j].id, temp2);
@@ -531,14 +516,14 @@ bool check_delta(struct node* avail_set, int * standard_p, int wcet, int delta, 
 int find_delta(struct node* avail_set, int period, int wcet, int wcet_left)
 {
     //construct standard regular partitions (needs to add 1 because time slice index counts from 1
-    //printf("find_delta: %d, %d, %d.\n", period, wcet, wcet_left);
+    printf("find_delta: %d, %d, %d.\n", period, wcet, wcet_left);
     int *standard_p1 = malloc(sizeof(int)*period);
-    for(int i=0; i < wcet; i++)
+    for(int i=0; i < period; i++)
     {
         standard_p1[i] = (int)(floor(i*period/wcet))%period;
     }
     int *standard_p2 = malloc(sizeof(int)*period);
-    for(int i=0; i < wcet_left; i++)
+    for(int i=0; i < period; i++)
     {
         standard_p2[i] = (int)(floor(i*period/wcet_left))%period;
     }
@@ -546,7 +531,7 @@ int find_delta(struct node* avail_set, int period, int wcet, int wcet_left)
     {
         if(check_delta(avail_set, standard_p1, wcet, delta1, period))
         {
-	    //printf("delta1 found: %d.\n", delta1);
+	    printf("delta1 found: %d.\n", delta1);
             for(int delta2=0; delta2 < period; delta2++)
             {
                 if(check_delta(avail_set, standard_p2, wcet_left, delta2, period))
@@ -576,10 +561,11 @@ struct node *partition_single(sched_entry_t *partitions, int hp, struct node* av
         //allocate time slices based on different wcet of the current partition
         if(partitions[i].wcet!=1)
         {
+	    printf("Finding delta.\n");
             //find available delta first
             int avail_length = list_length(avail);
-	    //print_list(avail);
-	    //printf("wcet now: %d, %d.\n", (int)(avail_length * partitions[i].period/hp), partitions[i].wcet);
+	    print_list(avail);
+	    printf("wcet now: %d, %d.\n", (int)(avail_length * partitions[i].period/hp), partitions[i].wcet);
             int delta1 = find_delta(avail, partitions[i].period, partitions[i].wcet, (int)(avail_length * partitions[i].period/hp) - partitions[i].wcet);
             if(delta1 == -1)
             {
@@ -663,12 +649,12 @@ struct pcpu* load_pcpus(struct pcpu *pcpu_t)
 }
 
 /* ************* MUL-Z ************
- * @param: sched_entry_t* partitions: An array of struct sched_entry_t, which stores the information of partitions.
+ * @param: sched_entry_t* mulZ: An array of struct sched_entry_t, which stores the information of partitions.
  * @param: pcpu* pc: An array of struct pcpu.
  * @param: int cpu_pool_id: The id of the current cpu pool.
  * @return: Returns true when schedulable and false otherwise.
  * ********************************/
-bool Mul_Z(sched_entry_t* partitions, struct pcpu *pc, int cpu_pool_id)
+bool Mul_Z(sched_entry_t* mulZ, struct pcpu *pc, int cpu_pool_id)
 {
     int cpu_return_id;
 
@@ -680,18 +666,15 @@ bool Mul_Z(sched_entry_t* partitions, struct pcpu *pc, int cpu_pool_id)
     for(int i=0; i<NUM_ENTRIES; i++)
     {
         // cpu_return_id =1;
-        printf("Partition wcet and period are %d, %d.\n", partitions[i].wcet, partitions[i].period);
-        cpu_return_id = MulZ_FFD_Alloc(&partitions[i].wcet, &partitions[i].period, pc);
-        printf("New partition wcet and period are %d, %d.\n", partitions[i].wcet, partitions[i].period);
+        cpu_return_id = MulZ_FFD_Alloc((double)mulZ[i].wcet/mulZ[i].period, pc);
         // For PCPUs
-
+        printf("CPU return ID is: %d\n", cpu_return_id);
         if(cpu_return_id == -1)
             return false;
         else
         {
             // CPU_ID : Partition_ID
-            printf("CPU return ID for partition #%d is: %d\n", partitions[i].index, cpu_return_id);
-            insert_key_val(cpu_return_id, partitions[i].index);
+            insert_key_val(cpu_return_id, mulZ[i].index);
         }
     }
 
@@ -716,22 +699,20 @@ bool Mul_Z(sched_entry_t* partitions, struct pcpu *pc, int cpu_pool_id)
             {
                 if(hashArray[j]->Key == pc[rrp_cpus[i]].cpu_id)
                 {
-		    printf("Key and value now are: %d, %d. \n", hashArray[j]->Key, hashArray[j]->Value);
                     // Add to vector current_sched_entries the Partition-ID
-                    // VECTOR_ADD(current_sched_entries, &paritions[hashArray[j]->Value]);
+                    // VECTOR_ADD(current_sched_entries, &mulZ[hashArray[j]->Value]);
                     // Perform Copy of every entity of that instance
-		            RRP_MulZ[count].id = malloc(1024);
-                    strncpy(RRP_MulZ[count].id, partitions[hashArray[j]->Value].id, 1024);
-                    RRP_MulZ[count].wcet = partitions[hashArray[j]->Value].wcet;
-                    RRP_MulZ[count].period = partitions[hashArray[j]->Value].period;
-        		    RRP_MulZ[count].index = partitions[hashArray[j]->Value].index;
-        		    printf("----------RRP_MULZ[%d] INFO --------------------\n",count);
+		    RRP_MulZ[count].id = malloc(1024);
+                    strncpy(RRP_MulZ[count].id, mulZ[hashArray[j]->Value].id, 1024);
+                    RRP_MulZ[count].wcet = mulZ[hashArray[j]->Value].wcet;
+                    RRP_MulZ[count].period = mulZ[hashArray[j]->Value].period;
+		    RRP_MulZ[count].index = mulZ[hashArray[j]->Value].index;
+		    printf("----------RRP_MULZ[%d] INFO --------------------\n",count);
                     printf("RRP_MulZ[%d].id: %s\n", count, RRP_MulZ[count].id);
                     printf("RRP_MulZ[%d].wcet: %d\n", count, RRP_MulZ[count].wcet);
                     printf("RRP_MulZ[%d].period: %d\n", count, RRP_MulZ[count].period);
-        		    printf("RRP_MulZ[%d].index: %d\n", count, RRP_MulZ[count].index);
-                    printf("RRP_MulZ[%d] lies in CPU %d.\n", count, pc[rrp_cpus[i]].cpu_id);
-        		    printf("------------------------------\n");
+		    printf("RRP_MulZ[%d].index: %d\n", count, RRP_MulZ[count].index);
+		    printf("------------------------------\n");
                     count++;
                 }
             }
@@ -759,7 +740,6 @@ bool Mul_Z(sched_entry_t* partitions, struct pcpu *pc, int cpu_pool_id)
              * TODO: Example: PCPUs 2-4 {2,3,4} so it will be easy to modify it here.. */
 
 #ifdef RRP_XEN_VERSION_TWO
-            sched_aaf[i].cpu_count = RRP_PCPUS;
             sched_aaf[i].cpu_id = pc[rrp_cpus[i]].cpu_id;
             sched_aaf[i].hyperperiod = hyper_period_MulZ(RRP_MulZ, count)*TIME_SLICE_LENGTH;
             sched_aaf[i].num_schedule_entries = list_length(head2);
@@ -829,19 +809,15 @@ bool Mul_Z(sched_entry_t* partitions, struct pcpu *pc, int cpu_pool_id)
     return true;
 }
 
-/* *************** MulZ_FFD_Alloc ********
- * @param: int *wcet: The value of wcet of the current partition.
- * @param: int *period: The value of period of the current partition.
- * @param: pcpu_t: An array of struct pcpu, it stores the information of all pcpus.
- * @return: Returns the id of pcpu current partition is allocated to.
- *          If no available pcpu is found, return -1.
+/* *************** HELPER-FUNCTION FOR MUL_Z ********
+ * @param: double (AAF) of each partition
+ * @param: pcpu_t: Pointer to struct pcpu
  * Credits: Yu Li, Guangli Dai, Pavan Kumar Paluri
  * ***************************************************/
-int MulZ_FFD_Alloc(int *wcet, int *period, struct pcpu* pcpu_t) {
+int MulZ_FFD_Alloc(double af, struct pcpu* pcpu_t) {
     int fixed_list[4] = {3, 4, 5, 7};
     Vector num_frac;
     int x_index = 5;
-    double af = (double)(*wcet)/(*period);
     double smallest = INT_MAX;
     int smallest_up = 0, smallest_down = INT_MAX;
     for (int i = 0; i < 4; i++)
@@ -875,34 +851,13 @@ int MulZ_FFD_Alloc(int *wcet, int *period, struct pcpu* pcpu_t) {
         int pcpu_id_now = pcpu_t[rrp_cpus[i]].cpu_id;
         if(pcpu_t[pcpu_id_now].factor == 0)
         {
-            //assign this partition to pcpu_id_now
             pcpu_t[pcpu_id_now].factor = x_index;
             pcpu_t[pcpu_id_now].rest = 1-r;
-            *wcet = smallest_up;
-            *period = smallest_down;
+            // TODO: set_AAF(rest) and set_AAF_Frac() need to be developed...
+            // Do We need them though ???
             printf("Final Factor is: %lf\n", r);
-            printf("Allocated to %d.\n", pcpu_id_now);
             return pcpu_id_now;
         }
-        else
-        {
-            Vector tempFrac;
-            tempFrac = z_approx(af, pcpu_t[pcpu_id_now].factor);
-            int temp_wcet = (int)vector_get(&tempFrac, 0);
-            int temp_period = (int)vector_get(&tempFrac, 1);
-            double temp_num = (double)temp_wcet / (double)temp_period;
-            if(temp_num <= pcpu_t[pcpu_id_now].rest)
-            {
-                //assign this partition to pcpu_id_now
-                *wcet = temp_wcet;
-                *period = temp_period;
-                pcpu_t[pcpu_id_now].rest -= temp_num;
-                printf("Final Factor is: %lf\n", temp_num);
-                printf("Allocated to %d.\n", pcpu_id_now);
-                return pcpu_id_now;
-            }
-        }
-        /*
         else if(pcpu_t[pcpu_t[rrp_cpus[i]].cpu_id].rest >= r)
         {
             Vector rfrac;
@@ -913,21 +868,14 @@ int MulZ_FFD_Alloc(int *wcet, int *period, struct pcpu* pcpu_t) {
 
             r = (double)first_elem_r/second_elem_r;
             printf("Final Factor is: %lf\n", r);
-            printf("Allocated to %d.\n", pcpu_id_now);
             pcpu_t[pcpu_id_now].rest -= r;
             return pcpu_id_now;
         }
-        */
     }
 
     return -1;
 }
 
-/* *************** z_approx ********
- * @param: double avail_factor: Avalability factor of each partition
- * @param: int num: The value of m in function Z(m, 2).
- * @return: Returns the approximate wcet and period calculated based on Z(m,2)
- * ***************************************************/
 Vector z_approx(double avail_factor, int num)
 {
     int i = 1, j=0, m=2;
@@ -1049,10 +997,6 @@ void Half_Split(struct node* header, struct node** first_half,
 /* ********* FILE EXTRACTION OPERATIONS ************
  * RRP-Xen 2.0 Domains, CPU-Pool ID and CPU-IDs extractions
  * **************************************************/
-/* ********* poolid ************
- * @param: FILE *filer: The file pointer to be used.
- * @return: The pool_id of the cpu pool target scheduler controls.
- * *********************************/
  int poolid(FILE *filer)
 {
      int pool_id;
