@@ -3,11 +3,12 @@
  * Author:: Pavan Kumar Paluri, Guangli Dai
  * Copyright 2019-2020 - RTLAB UNIVERSITY OF HOUSTON */
 // Created by Pavan Kumar  Paluri  on 2019-07-22.
-// --------------------------------------------------
-// Last upadted on April-11, 2020 -[fixed cpu ID issue]
+// ---------------------------------------------
+// Last upadted on September 12, 2021
 // --------------------------------------------------------------------------------------
 //  NOTE:: now() in Xen hypervisor space always measures time in Nanoseconds time units.
 // Therefore, wcet being passed to the hypervisor space should also be in Nanoseconds
+// A VCPU is assigned to each scehdule entry for RRP-Xen v3.0.1
 // --------------------------------------------------------------------------------------
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,20 +16,18 @@
 #include <unistd.h>
 #include <math.h>
 #include <assert.h>
-//#include </usr/local/include/xenctrl.h>
 #include <uuid/uuid.h>
-//#include </usr/local/include/xen/sysctl.h>
 #include <xenctrl.h>
 #include <xen/sysctl.h>
 #define NUM_MINOR_FRAMES 2
 typedef int64_t s_time_t;
 #define MICROSECS(_us)    ((s_time_t)((_us) * 1000ULL))
-// #define MILLISECS(_ms)          (((s_time_t)(_ms)) * 1000000UL )
 #define MILLISECS(_ms)  ((s_time_t)((_ms) * 1000000ULL))
 #define DOMN_RUNTIME(_runtime) (_runtime*MICROSECS(1000)) // Example: DOMN_RUNTIME(30) ~30ms ~ 30*pow(10,3)ns
 #define DOMN_RUNTIME_US (DOMN_RUNTIME*MICROSECS(1000))
 #define LIBXL_CPUPOOL_POOLID_ANY 0xFFFFFFFF
 #define UUID_READ 1024
+#define TIME_SLICE_LENGTH DOMN_RUNTIME(1)
 
 #define NUM_ENTRIES 3
 
@@ -41,8 +40,8 @@ static int num_minor_frames;
 // Structure Definitions
 typedef struct {
     char *id;
-    int wcet; // getAAF_numerator
-    int period; // getAAF_denominator
+    int wcet;
+    int period;
 }sched_entry_t;
 
 // Maintain a single linked list of timeslices
@@ -103,22 +102,17 @@ char **uu_id(FILE *filer)
 struct node* MergeSort(struct node ** HeadRef)
 {
     struct node* head = *HeadRef;
-    // Create 2 nodes a and b for splitting
     struct node* a;
     struct node* b;
 
-    // Trivial case test: what if the there is only 1 element in the list?
     if((head->next == NULL) || (head == NULL))
         return NULL;
 
-    // Split the unsorted list into 2 halves
     HalfSplit(head, &a, &b);
 
-    // Sort the halves recursively
     MergeSort(&a);
     MergeSort(&b);
 
-    // Merge the sorted halves and point it back to headref
     *HeadRef = SortedMerge(a,b);
     return *HeadRef;
 
@@ -130,8 +124,6 @@ struct node* SortedMerge(struct node* a, struct node* b)
     // init a temp node
     struct node* result = NULL;
 
-    // Trivial checks
-    // if only on half is present, no need to sort, just return that valid half
     if(a == NULL)
         return b;
     else if(b == NULL)
@@ -159,8 +151,7 @@ void HalfSplit(struct node* header, struct node** first_half,
     struct node* slow_divider;
     slow_divider = header;
     fast_divider = header->next;
-    // while slow_divider increments one node at a time, fast_divider advances 2 nodes at a time
-    // thereby staying ahead and checking if list is not null
+
     while(fast_divider != NULL)
     {
         fast_divider = fast_divider->next;
@@ -171,8 +162,6 @@ void HalfSplit(struct node* header, struct node** first_half,
         }
     }
 
-    // By the time control is out of above while loop, fast_divider should have reached
-    // the end of list while slow_divider should have reached node before midpoint
     *first_half = header;
     *second_half = slow_divider->next;
     slow_divider->next = NULL;
@@ -188,24 +177,18 @@ void append(struct node** header, int ts, char* id)
     // Assignment(s)
     new_node->ts = ts;
     char buf[30];
-   // buf = strdup(id);
     new_node->id = id;
-    // printf("time slice added:%d\n",new_node->ts);
-    // Make next of this new_node to NULL since its being appended at the end of the list
     new_node->next=NULL;
 
-    // If list is empty, make the head as last node
     if(*header == NULL)
     {
         *header = new_node;
-        // printf("Head's timeslice:%d\n",(*header)->ts);
         return;
     }
-    //If list is not empty, traverse the entire list to append the ts at the end
+
     while(last->next !=NULL)
         last = last->next;
     last->next = new_node;
-    // printf("Tail Timeslice:%d\n",last->ts);
     return;
 
 }
@@ -215,11 +198,7 @@ void append(struct node** header, int ts, char* id)
 void print_list(struct node* noder)
 {
     while(noder!= NULL)
-    {
-        printf("timeslice:%d\n",noder->ts);
-        printf("DomID:%s\n",noder->id);
         noder = noder->next;
-    }
     printf("\n");
 }
 
@@ -269,11 +248,11 @@ void delete_entry(struct node **head, int position)
 
 }
 
-// Search an element by its value to check its presence
+
 /* Checks whether the value x is present in linked list */
 bool search(struct node* head, int x)
 {
-    struct node* current = head;  // Initialize current
+    struct node* current = head;
     while (current != NULL)
     {
         if (current->ts == x)
@@ -329,61 +308,33 @@ int main()
     sched_entry_t schedule[num_minor_frames], *scheduler;
     int A_val[num_minor_frames];
     xc_interface *xci = xc_interface_open(NULL,NULL,0);
-
-    int cpu_id = get_cpu_id();
-    if(cpu_id!=-1)
-        sched_aaf.cpu_id = cpu_id;
-
-    printf("Enter the schedule WCET:");
     for(int i=0; i<num_minor_frames; i++)
     {
+	printf("Input the WCET for VM %d:", i+1);
         scanf("%d",&schedule[i].wcet);
-    }
-    printf("Enter the schedule's Periods:");
-    for(int i=0; i<num_minor_frames; i++)
-    {
-        scanf("%d",&schedule[i].period);
+	printf("Input the Period for VM %d:", i+1);
+	scanf("%d", &schedule[i].period);
     }
 
     for(int i=0; i< num_minor_frames; i++)
     {
          schedule[i].id = malloc(UUID_READ);
-        //strcpy(schedule[i].id ,uuid[i]);
         strncpy(schedule[i].id, uuid[i],UUID_READ);
-        //schedule[i].id[19] = 0;
-        printf("WCET of schedule[%d] is %d\n ",i, schedule[i].wcet);
-        printf("Period of schedule[%d] is %d\n",i, schedule[i].period);
     }
 
     int *avail_ts;
     scheduler = dom_comp(schedule);
-    for(int i=0;i <num_minor_frames;i++) {
-        printf(" schedule WCET[%d]= %d\n", i, scheduler[i].wcet);
-        printf(" schedule Period[%d]= %d\n", i, scheduler[i].period);
-    }
     getA_calc(scheduler, hyper_period(scheduler));
-    //for( int i=0;i< num_minor_frames;i++)
-    //    printf("arr[%d]:%d\n",i,arr[i]);
     struct node *head = NULL;
     struct node *head_1, *head_2;
 
     head_1 = load_timeslices(head, hyper_period(scheduler));
-    //print_list(load_timeslices(head, hyper_period(scheduler)));
-    // Returns an unsorted timeslice-domain Pair
-    // Need to sort it based on the timeslices....
     head_2 = partition_single(scheduler, hyper_period(scheduler), head_1);
-    sched_aaf.hyperperiod = hyper_period(scheduler)*DOMN_RUNTIME(30);
+    sched_aaf.hyperperiod = hyper_period(scheduler)*TIME_SLICE_LENGTH;
 
     head_2= MergeSort(&head_2);
-    printf("\nSorted list\n");
     print_list(head_2);
-    // set the number of schedule entries dynamically to be equal to the number of entries in timeslice-dom table
     sched_aaf.num_schedule_entries = list_length(head_2);
-    //sched_aaf.num_sched_entries = 1;
-    printf("Number of schedule entries in Kernel:%d\n",sched_aaf.num_schedule_entries);
-    printf("Hyperperiod of the schedule:%d\n",sched_aaf.hyperperiod);
-
-    // Testing phase to see if int dom_id can be converted back to xen_dom_handle for launching into kernel...
     uuid_new = (char**)calloc(num_minor_frames,sizeof(char*));
     for(int i=0;i<num_minor_frames;i++)
     {
@@ -394,38 +345,23 @@ int main()
     while(head_2 != NULL)
     {
         char buf[30];
-       // itoa(head_2->id,uuid_new[k],64);
        printf("Return Val:%d\n",uuid_parse(head_2->id,sched_aaf.schedule[k].dom_handle));
-       sched_aaf.schedule[k].wcet = DOMN_RUNTIME(30);
-
-      // if(sched_aaf.schedule[k].wcet ==0)
-      //     sched_aaf.schedule[k].wcet =1;
-       sched_aaf.schedule[k].vcpu_id = 0;
+       sched_aaf.schedule[k].wcet = TIME_SLICE_LENGTH;
+       sched_aaf.schedule[k].vcpu_id = k;
         head_2 = head_2->next;
         k++;
     }
 
-    /*
-    printf("k value:%d\n",k);
-
-    for(int z=0;z<k;z++)
-    {
-        //printf("uuid_string:%s\n",uuid_new[z]);
-        //uuid_parse(uuid_new[z],sched_aaf.schedule[z].dom_handle);
-        printf("Dom_Handle:%X\n",*sched_aaf.schedule[z].dom_handle);
-        printf("Domain Runtime:%d\n",sched_aaf.schedule[z].wcet);
-    }
-    */
-
    // sched_aaf has now all the required fields to prepare sched_entries and send them into runnable state ...
-    int set_result;
- //  printf(" \n !!!!! SCHEDULE SET AND GET FUNCTIONS NOT INVOKED !!!!!\n");
+   int set_result;
    set_result = xc_sched_aaf_schedule_set(xci,pool_id,&sched_aaf);
    printf("Schedule Set for AAF result is: %d\n",set_result);
-    	//set_result = xc_sched_arinc653_schedule_set(xci,pool_id,&sched_aaf);
+
+   /*
    int get_result =32 ;
    get_result = xc_sched_aaf_schedule_get(xci,pool_id,&sched_aaf);
-    printf(" Schedule Get for AAF result is: %d\n",get_result);
+   printf(" Schedule Get for AAF result is: %d\n",get_result);
+   */
 
     return 0;
 }
@@ -441,19 +377,19 @@ void swap(int a, int b)
     temp = a;
     a = b;
     b = temp;
-    printf(" Value of a and b are: %d %d respectively\n", a,b);
-
 }
 
 sched_entry_t *dom_comp(sched_entry_t sched[])
 {
     int i,j;
     for(i=0;i<num_minor_frames;i++) {
+
         for (j = i + 1; j < num_minor_frames; j++) {
+
             int k;
             k = domain_handle_comp(sched[i].wcet, sched[j].wcet);
-            if (k != 0) {
-                // swap(sched[i].wcet, sched[j].wcet);
+
+	   if (k != 0) {
                 int temp,temp1;
                 char temp2[1024];
                 temp = sched[i].wcet;
@@ -468,7 +404,9 @@ sched_entry_t *dom_comp(sched_entry_t sched[])
                 strcpy(sched[i].id , sched[j].id);
                 strcpy(sched[j].id ,temp2);
             }
+
         }
+
     }
     return sched;
 }
@@ -484,7 +422,6 @@ int lcm(int num1, int num2)
     {
         if( minMultiple%num1==0 && minMultiple%num2==0 )
         {
-            //printf("The LCM of %d and %d is %d.\n", num1, num2,minMultiple);
             break;
         }
         ++minMultiple;
@@ -496,13 +433,10 @@ int lcm(int num1, int num2)
 int hyper_period(sched_entry_t *sched)
 {
     int final_val=1;
+
     for (int i=0; i< num_minor_frames; i++)
-    {
-
         final_val = lcm(final_val, sched[i].period);
-        //printf("Final Value: %d\n", final_val);
 
-    }
     return final_val;
 }
 
@@ -646,47 +580,10 @@ struct node *partition_single(sched_entry_t *partitions, int hp, struct node* av
         for(int i=1;i<=hp;i++)
         {
             if(search(avail,i)==true && search(occupied_time_index,i)== false)
-                // insert the ith element of linked list with head "Node"
                 append(&temp,i,0);
         }
-        //print_list(temp);
         avail=copy(temp,avail);
-        //print_list(Node);
-
-
     }
-    //printf("The result from partition_single:\n");
-    //print_list(result);
     return result;
 }
 
-/* ********* get_cpu_id ************
- * @return: Returns the id of the first CPU in the pool (if there are multiple).
- *          The cpu ids must be written to /home/rtlabuser/pool_uuid/rrp_cpus_list.txt in advance.
- *          If no available CPU id is found there, the function returns -1.
- * *********************************/
-int get_cpu_id()
-{
-    FILE *filer;
-    filer = fopen("/home/rtlabuser/pool_uuid/rrp_cpus_list.txt", "r");
-    if(filer == NULL)
-    {
-        perror("fopen(rrp_cpus_list.txt)\n");
-    }
-    char *token;
-    const char s[2] = ",";
-    //read in the first cpu id and return.
-    if(filer != NULL)
-    {
-        char line[20];
-        while(fgets(line, sizeof(line), filer)!= NULL)
-        {
-            token = strtok(line, s);
-            int cpu_id = atoi(token);
-            fclose(filer);
-            return cpu_id;
-        }
-    }
-    return -1;
-    fclose(filer);
-}
