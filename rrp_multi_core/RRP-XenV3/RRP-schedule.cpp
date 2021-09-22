@@ -10,6 +10,11 @@
 using namespace std;
 using namespace rapidjson;
 
+#include <xenctrl.h>
+#include <xen/sysctl.h>
+#include <uuid/uuid.h>
+
+#define TIME_SLICE_LENGTH 30
 // Structure Definitions
 typedef struct {
     string id;
@@ -52,6 +57,7 @@ vector<domain> getDomainInfo(string domainsFileName);
 unordered_set<int> getPCPUs(string CPUsFileName);
 bool validateVCPUInfo(const vector<sched_entry_t> & VCPUs, int vcpuNum, const unordered_set<int>& PCPUs);
 string generateNewID(string domainID, string VCPUId);
+void parseID(string IDNow, string& domainID, int &VCPUID);
 
 // schedule generation functions --> to be added
 bool cmpVCPUs(const sched_entry_t& a, const sched_entry_t& b);
@@ -344,6 +350,19 @@ string generateNewID(string domainID, string VCPUId)
 	return domainID + ":" + VCPUId;
 }
 
+/* ********* parseID ************
+ * Parses the ID and retrieve the domain ID and the VCPU ID
+ * @param: string IDNow: the ID of the domain
+ * @param: string& domainID: the ID of the domain
+ * @param: int& VCPUId:   the ID of the VCPU
+ * *********************************/
+void parseID(string IDNow, string& domainID, int &VCPUID)
+{
+    int pos = IDNow.find(":");
+    domainID = IDNow.substr(0, pos);
+    VPUCID = atoi(IDNow.substr(pos+1).c_str());
+}
+
 /* ************* MULZ_ILO ************
  * @param: sched_entry_t* partitions: An array of struct sched_entry_t, which stores the information of partitions.
  * @param: pcpu* pc: An array of struct pcpu.
@@ -356,6 +375,11 @@ bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_l
 {
     int factors[4]= {3,4,5,7};
     unordered_map<int, vector<string>> results;
+    unordered_map<string, sched_entry_t> VCPUMap;
+    for(auto v:VCPUs)
+    {
+        VCPUMap[v.id] = v;
+    }
     for(int i=0; i<PCPUs.size(); i++)
     {
         //push in empty schedules if no partitions left
@@ -414,7 +438,38 @@ bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_l
     	//printEntries(results[PCPUs[i].cpu_id]);
     }
     if (VCPUs.size()!=0)
-    	return false;
+        return false;
+
+    // convert to the data structure sched_set can accept
+    for(int i=0; i<PCPUs.size(); i++)
+    {
+        struct xen_sysctl_scheduler_op ops;
+        // can we keep using the same sched_aaf?
+        struct xen_sysctl_aaf_schedule sched_aaf; 
+        int counter = 0;
+        sched_aaf.cpu_id = PCPUs[i];
+        sched_aaf.hyperperiod = results[PCPUs[i]].size()*TIME_SLICE_LENGTH;
+        sched_aaf.num_schedule_entries = results[PCPUs[i]].size();
+        // check num_schedule_entries fit the requirments
+        for(auto id:results[PCPUs[i]])
+        {
+            auto temp = VCPUMap[id];
+            sched_aaf.schedule[counter].wcet = TIME_SLICE_LENGTH;
+            parseID(temp.id, sched_aaf.schedule[counter].domain_handle, sched_aaf.schedule[counter].vcpu_id); 
+            counter ++;
+        }
+
+        cout << "------------------------------" << endl;
+        cout << "CPU #" << sched_aaf.cpu_id << endl;
+        // set_result = xc_sched_aaf_schedule_set(xci, cpu_pool_id, &sched_aaf[i]);
+        for(int i=0; i<counter; i++)
+        {
+            cout << sched_aaf.schedule[i].domain_handle << " ----- " << sched_aaf.schedule[i].vcpu_id << endl;
+        }
+
+    }
+
+
     return true;
 }
 
