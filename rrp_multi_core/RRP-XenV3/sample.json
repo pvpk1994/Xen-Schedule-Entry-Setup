@@ -16,8 +16,8 @@
 
 		{
 			"ID" : 2,
-			"WCET" : 3,
-			"period" : 5,
+			"WCET" : 2,
+			"period" : 8,
 			"PCPU" : 5
 		}
 	]

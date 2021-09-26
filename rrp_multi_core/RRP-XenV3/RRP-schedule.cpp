@@ -10,9 +10,6 @@
 using namespace std;
 using namespace rapidjson;
 
-#include <xenctrl.h>
-#include <xen/sysctl.h>
-#include <uuid/uuid.h>
 
 #define TIME_SLICE_LENGTH 30
 // Structure Definitions
@@ -360,7 +357,7 @@ void parseID(string IDNow, string& domainID, int &VCPUID)
 {
     int pos = IDNow.find(":");
     domainID = IDNow.substr(0, pos);
-    VPUCID = atoi(IDNow.substr(pos+1).c_str());
+    VCPUID = atoi(IDNow.substr(pos+1).c_str());
 }
 
 /* ************* MULZ_ILO ************
@@ -427,48 +424,36 @@ bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_l
         results[PCPUs[i]] = result;
     }
 
+    // write the results to file
+    ofstream schedule_out;
+    schedule_out.open("out.txt");
+
     for(int i=0; i<PCPUs.size(); i++)
     {
-    	cout << endl << "For CPU #" << PCPUs[i] << endl;
-    	for(auto id:results[PCPUs[i]])
+    	schedule_out << PCPUs[i] << "," << results[PCPUs[i]].size() << endl;
+    	cout << endl << "For CPU #" << PCPUs[i] << "\n";
+	for(int j=0; j<results[PCPUs[i]].size(); j++)
+    	//for(auto id:results[PCPUs[i]])
     	{
-    		cout << id << " , ";
+		// only output the domain since the vcpu id will be determined by the kernel
+		string id = results[PCPUs[i]][j];
+		int pos = id.find(":");
+		id = id.substr(0, pos);
+    		cout << id; // << " , ";
+		schedule_out << id;//<< ",";
+		if(j<results[PCPUs[i]].size() - 1)
+		{
+			cout << ",";
+			schedule_out << ",";
+		}
     	}
+	schedule_out << "\n";
     	cout << endl;
     	//printEntries(results[PCPUs[i].cpu_id]);
     }
+    schedule_out.close();
     if (VCPUs.size()!=0)
         return false;
-
-    // convert to the data structure sched_set can accept
-    for(int i=0; i<PCPUs.size(); i++)
-    {
-        struct xen_sysctl_scheduler_op ops;
-        // can we keep using the same sched_aaf?
-        struct xen_sysctl_aaf_schedule sched_aaf; 
-        int counter = 0;
-        sched_aaf.cpu_id = PCPUs[i];
-        sched_aaf.hyperperiod = results[PCPUs[i]].size()*TIME_SLICE_LENGTH;
-        sched_aaf.num_schedule_entries = results[PCPUs[i]].size();
-        // check num_schedule_entries fit the requirments
-        for(auto id:results[PCPUs[i]])
-        {
-            auto temp = VCPUMap[id];
-            sched_aaf.schedule[counter].wcet = TIME_SLICE_LENGTH;
-            parseID(temp.id, sched_aaf.schedule[counter].domain_handle, sched_aaf.schedule[counter].vcpu_id); 
-            counter ++;
-        }
-
-        cout << "------------------------------" << endl;
-        cout << "CPU #" << sched_aaf.cpu_id << endl;
-        // set_result = xc_sched_aaf_schedule_set(xci, cpu_pool_id, &sched_aaf[i]);
-        for(int i=0; i<counter; i++)
-        {
-            cout << sched_aaf.schedule[i].domain_handle << " ----- " << sched_aaf.schedule[i].vcpu_id << endl;
-        }
-
-    }
-
 
     return true;
 }

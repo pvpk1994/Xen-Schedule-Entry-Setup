@@ -9,7 +9,7 @@
 
 # Root access only, else libxl functions shall not work in the simulation
 
-DEFAULT_DIR=/home/rtlabuser
+DEFAULT_DIR=./config_files #/home/rtlabuser
 UUID_INFO=$DEFAULT_DIR/pool_uuid/uuid_info.txt
 POOLID_INFO=$DEFAULT_DIR/pool_uuid/pool_id.txt
 CPU_LIST=$DEFAULT_DIR/pool_uuid/cpu_list.txt
@@ -41,11 +41,16 @@ else
         done
         if [ $? -eq 0 ]; then
                 echo " UUIDs of domain(s) and cpupool ID bought into simulation file"
-                gcc $(pwd)/rrp_sched_entry_mc.c -lxenctrl -lm -luuid -o sched_entry_mc -L /usr/local/lib 2>/dev/null
+		g++ $(pwd)/RRP-schedule.cpp -std=c++11 -o sched
+                #gcc $(pwd)/rrp_sched_entry_mc.c -lxenctrl -lm -luuid -o sched_entry_mc -L /usr/local/lib 2>/dev/null
                 if [ $? -eq 0 ]; then
                         echo "aaf schedul entries are set successfully!!"
                         echo "----proceeding with execution---"
-                        ./sched_entry_mc
+			./sched ${POOLID_INFO} $DEFAULT_DIR/pool_uuid/rrp_cpus_list.txt ${UUID_INFO}
+			gcc set_schedule.c -lxenctrl -lm -luuid -o sched_entry_mc -L /usr/local/lib -o set_sched
+			./set_sched
+
+                        #./sched_entry_mc
 			echo "************ NOTE ********"
 			echo "* (XEN) find_vcpu_pcpu in if, CPU_ID: 1/3"
 			echo "* If the above statement does not appear in xl dmesg"
