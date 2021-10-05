@@ -16,7 +16,7 @@ else
     cd /mnt/vmdisk
     echo "Current Directory: $(pwd)"
     echo "$(ls)"
-    dd if=/dev/zero of=./mydisk8 bs=1024M count=16
+    dd if=/dev/zero of=./mydisk8 bs=1024M count=32
     if [ $? -eq 0 ]; then
 	echo "Records created and copied successfully"
     else
@@ -24,21 +24,25 @@ else
     fi
     CHECKER=(file mydisk8)
     echo " mydisk8 has $CHECKER"
-    losetup /dev/loop8 ./mydisk8
+    losetup /dev/loop5 ./mydisk8
     #losetup ./mydisk1 /dev/sda1
     #losetup /dev/loop3 ./mydisk1
-    pvcreate /dev/loop8
+    pvcreate /dev/loop5
     echo "file mydisk8 now has:$(file mydisk8)"
     #2048 here is the size of the PE (physical extent), which is a basic unit of the memory
-    vgcreate -s 8192 myvolumegroup8 /dev/loop8
-    lvcreate -L 8192 -n mylv8 myvolumegroup8
+    vgcreate myvolumegroup8 /dev/loop5
+    lvcreate -l 100%VG -n mylv8 myvolumegroup8
     #lvcreate -L 4G -n mylv2 myvolumegroup1
     #echo "$(ls /dev/myvolumegroup8)"
     #mkdir -p /var/lib/xen/images/cent-netboot
     #cd /var/lib/xen/images/cent-netboot
+    mkdir -p /var/lib/xen/images/ubuntu-netboot
+    cd /var/lib/xen/images/ubuntu-netboot
     rm ./*
-    wget http://archive.ubuntu.com/ubuntu/dists/precise-updates/main/installer-amd64/current/images/netboot/xen/vmlinuz
-    wget http://archive.ubuntu.com/ubuntu/dists/precise-updates/main/installer-amd64/current/images/netboot/xen/initrd.gz
+    wget http://archive.ubuntu.com/ubuntu/dists/bionic-updates/main/installer-amd64/current/images/netboot/xen/initrd.gz
+    wget http://archive.ubuntu.com/ubuntu/dists/bionic-updates/main/installer-amd64/current/images/netboot/xen/vmlinuz
+#    wget http://archive.ubuntu.com/ubuntu/dists/precise-updates/main/installer-amd64/current/images/netboot/xen/vmlinuz
+#    wget http://archive.ubuntu.com/ubuntu/dists/precise-updates/main/installer-amd64/current/images/netboot/xen/initrd.gz
     # CENT OS Kernel..
     #wget http://vault.centos.org/7.2.1511/os/x86_64/images/pxeboot/vmlinuz
    #wget http://mirror.globo.com/centos/6/os/x86_64/isolinux/vmlinuz
@@ -46,9 +50,9 @@ else
     #wget http://vault.centos.org/7.2.1511/os/x86_64/images/pxeboot/initrd.img
    #wget http://mirror.globo.com/centos/6/os/x86_64/isolinux/initrd.img 
    echo "$(ls)"
-   # cd /etc/xen
-   # echo "All controls checked, Ready to launch the domain NOW!!! - Pavan!!"
-   # xl create -c domu1.cfg
+    cd /etc/xen
+   echo "All controls checked, Ready to launch the domain NOW!!! - Pavan!!"
+   #xl create -c domu1.cfg
     if [ $? -eq 0 ]; then
 	echo "vif- Ethernet Connection failure, Probably"
 	echo "Dont panic!!, Pavan's script can fix that..yipeee"
