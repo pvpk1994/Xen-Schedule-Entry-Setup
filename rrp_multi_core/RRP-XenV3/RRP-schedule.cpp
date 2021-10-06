@@ -11,7 +11,7 @@ using namespace std;
 using namespace rapidjson;
 
 
-#define TIME_SLICE_LENGTH 30
+#define TIME_SLICE_LENGTH 50
 // Structure Definitions
 typedef struct {
     string id;

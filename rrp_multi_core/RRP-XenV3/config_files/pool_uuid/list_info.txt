@@ -1,5 +1,5 @@
 Name                                        ID   Mem VCPUs	State	Time(s)   UUID                            Reason-Code	Security Label         Cpupool	POOLID
-Domain-0                                     0  9962     8     r-----    1624.8 00000000-0000-0000-0000-000000000000        -                -          Pool-0    0
-Domu6                                        1  2048     3     -b----      18.4 f25b693b-fb5f-4ed2-a90c-2588ba0f50d9        -                -        aaf_pool    1
-Domu7                                        2  2048     3     -b----      19.1 321fb798-5158-441f-9cb3-0da0f08a2a4a        -                -        aaf_pool    1
-Domu8                                        3  2048     3     -b----      18.4 9476edd9-1607-4a92-8e19-3779f01d7386        -                -        aaf_pool    1
+Domain-0                                     0  9962     8     r-----     393.1 00000000-0000-0000-0000-000000000000        -                -          Pool-0    0
+Domu6                                        1  2048     3     -b----       3.9 0b7906d2-e888-4a05-9d74-ff538d4897fd        -                -        aaf_pool    1
+Domu7                                        2  2048     3     -b----       5.6 de4f9bbf-85c0-41ca-a359-7472fc9f2e82        -                -        aaf_pool    1
+Domu8                                        3  2048     3     r-----     102.4 c15423df-b37b-45da-b70a-c0db000f5f72        -                -        aaf_pool    1

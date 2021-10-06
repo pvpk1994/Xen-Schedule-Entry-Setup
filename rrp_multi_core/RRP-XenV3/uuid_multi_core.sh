@@ -13,7 +13,7 @@ DEFAULT_DIR=./config_files #/home/rtlabuser
 UUID_INFO=$DEFAULT_DIR/pool_uuid/uuid_info.txt
 POOLID_INFO=$DEFAULT_DIR/pool_uuid/pool_id.txt
 CPU_LIST=$DEFAULT_DIR/pool_uuid/cpu_list.txt
-
+VCPU_PCPU_LIST=$DEFAULT_DIR/pool_uuid/vcpu_cpu_list.txt
 
 if [ $(whoami) != "root" ]; then
         echo "only root access!!!"
@@ -46,7 +46,8 @@ else
                 if [ $? -eq 0 ]; then
                         echo "aaf schedul entries are set successfully!!"
                         echo "----proceeding with execution---"
-			./sched ${POOLID_INFO} $DEFAULT_DIR/pool_uuid/rrp_cpus_list.txt ${UUID_INFO}
+			#rm -f out.txt
+			#./sched ${POOLID_INFO} $DEFAULT_DIR/pool_uuid/rrp_cpus_list.txt ${UUID_INFO}
 			gcc set_schedule.c -lxenctrl -lm -luuid -o sched_entry_mc -L /usr/local/lib -o set_sched
 			./set_sched
 
