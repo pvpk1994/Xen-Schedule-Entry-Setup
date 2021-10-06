@@ -75,8 +75,18 @@ RRP-Xen Version 3.0 per-VCPU information
 ```extract_vcpu_info.sh``` integrates ```xl vcpu-list``` and ```xl list -c -v``` to display exhaustive VCPU information of all RRP-Xen V3.0 operated VCPUs.
 
 Following is an Example that shows detailed per-VCPU information of RRP-Xen V3.0:
+| Name  | Domain ID | Domain UUID                          | VCPU | CPU |
+|-------|-----------|--------------------------------------|------|-----|
+| Domu6 | 1         | a8479b65-496f-4b5b-a08a-d4f562681990 | 0    | 5   |
+| Domu6 | 1         | a8479b65-496f-4b5b-a08a-d4f562681990 | 1    | 1   |
+| Domu6 | 1         | a8479b65-496f-4b5b-a08a-d4f562681990 | 2    | 3   |
+| Domu7 | 2         | 250421fd-08b7-4204-a475-8c1f21349e0a | 0    | 1   |
+| Domu7 | 2         | 250421fd-08b7-4204-a475-8c1f21349e0a | 1    | 3   |
+| Domu7 | 2         | 250421fd-08b7-4204-a475-8c1f21349e0a | 2    | 5   |
+| Domu8 | 3         | ebd8be5f-6546-4f6a-a1be-f064edbea534 | 0    | 5   |
+| Domu8 | 3         | ebd8be5f-6546-4f6a-a1be-f064edbea534 | 1    | 1   |
+| Domu8 | 3         | ebd8be5f-6546-4f6a-a1be-f064edbea534 | 2    | 3   |
 
-![181391633486314_ pic](https://user-images.githubusercontent.com/22582313/136135532-9c09a67a-148e-4001-b429-f1e52910a2a3.jpg)
 
 
 
