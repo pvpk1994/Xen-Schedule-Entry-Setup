@@ -69,3 +69,14 @@ Desired Result:
 | Domu5    | Blocked (--b--)      |  
 | Domu6 | Blocked (--b--)      |  
 | Domu7 | Blocked (--b--) |
+
+RRP-Xen Version 3.0 per-VCPU information
+----------------------------------------
+```extract_vcpu_info.sh``` integrates ```xl vcpu-list``` and ```xl list -c -v``` to display exhaustive VCPU information of all RRP-Xen V3.0 operated VCPUs.
+
+Following is an Example that shows detailed per-VCPU information of RRP-Xen V3.0:
+
+![181391633486314_ pic](https://user-images.githubusercontent.com/22582313/136135532-9c09a67a-148e-4001-b429-f1e52910a2a3.jpg)
+
+
+
