@@ -11,17 +11,19 @@ using namespace std;
 using namespace rapidjson;
 
 
-#define TIME_SLICE_LENGTH 50
+#define TIME_SLICE_LENGTH 30
 // Structure Definitions
 typedef struct {
     string id;
     int wcet; // availability factor numerator
     int period; // availability factor denominator
     int pcpu; // the pcpu this sched_entry_t will be executed on
+    double af; // the original availability factor before approximating
 
     double getAF()
     {
-    	return static_cast<double>(wcet) / static_cast<double>(period);
+        return af;
+    	//return static_cast<double>(wcet) / static_cast<double>(period);
     }
 }sched_entry_t;
 
@@ -399,6 +401,7 @@ bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_l
                 max_s = temp_result.af_sum;
                 chosen_ps = temp_result.ids;
                 factor_used = factor;
+
             }
         }
 
@@ -420,6 +423,7 @@ bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_l
         VCPUs = temp_VCPUs;
         cout << "For CPU #" << PCPUs[i] << ": " << endl;
         printEntries(VCPUs_now);
+        cout << "Using Factor: " << factor_used << endl;
         vector<string> result = CSG(VCPUs_now, factor_used);
         results[PCPUs[i]] = result;
     }
@@ -432,20 +436,10 @@ bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_l
     {
     	schedule_out << PCPUs[i] << "," << results[PCPUs[i]].size() << endl;
     	cout << endl << "For CPU #" << PCPUs[i] << "\n";
-	for(int j=0; j<results[PCPUs[i]].size(); j++)
-    	//for(auto id:results[PCPUs[i]])
+    	for(auto id:results[PCPUs[i]])
     	{
-		// only output the domain since the vcpu id will be determined by the kernel
-		string id = results[PCPUs[i]][j];
-		int pos = id.find(":");
-		id = id.substr(0, pos);
-    		cout << id; // << " , ";
-		schedule_out << id;//<< ",";
-		if(j<results[PCPUs[i]].size() - 1)
-		{
-			cout << ",";
-			schedule_out << ",";
-		}
+    		cout << id << " , ";
+		schedule_out << id << ",";
     	}
 	schedule_out << "\n";
     	cout << endl;
@@ -466,6 +460,31 @@ bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_l
  * ********************************/
 dp_return dp_single(vector<sched_entry_t> partition_list, int factor)
 {
+    //cout << "Inside dp_single: "<<endl;
+    //printEntries(partition_list);
+    // set up the before list
+    cout << factor <<endl;
+    vector<int> beforeIndex;
+    beforeIndex.push_back(-1);
+    int indexBefore = -1, vcpuNow;
+    string lastDomain = "", domainNow;
+    for(int i=0; i<partition_list.size(); i++)
+    {
+        auto& p = partition_list[i];
+        p.af = static_cast<double>(p.wcet) / static_cast<double>(p.period);
+        parseID(p.id, domainNow, vcpuNow);
+        if(domainNow!=lastDomain)
+        {
+            indexBefore = i + 1 - 1;
+            lastDomain = domainNow;
+        }
+        beforeIndex.push_back(indexBefore);
+    }
+    /*
+    for(auto i:beforeIndex)
+        cout<<i<<",";
+    cout<<endl;
+    */
     //approximate all partitions using the factor, note that af stays the same while WCET and period are updated so that WCET/period = aaf
     int largest_period = 1;
     for(int i=0; i<partition_list.size(); i++)
@@ -508,6 +527,7 @@ dp_return dp_single(vector<sched_entry_t> partition_list, int factor)
         dp_result.push_back(temp_result);
     }
 
+    //cout << n << "," << m <<endl;
     for(int i=0; i<n; i++)
     {
        if(i==0)
@@ -524,7 +544,9 @@ dp_return dp_single(vector<sched_entry_t> partition_list, int factor)
             double temp2 = 0;
             if(j >= WCET_now)
             {
-                temp2 = dp[i-1][j-WCET_now] + af_now;
+                //temp2 = dp[i-1][j-WCET_now] + af_now;
+                int last = beforeIndex[i];
+                temp2 = dp[last][j-WCET_now] + af_now;
             }
 
             if(temp1 >= temp2)
@@ -535,9 +557,13 @@ dp_return dp_single(vector<sched_entry_t> partition_list, int factor)
             else
             {
                 dp[i][j] = temp2;
-                dp_result[i][j] = dp_result[i-1][j-WCET_now];
+                //dp_result[i][j] = dp_result[i-1][j-WCET_now];
+                int last = beforeIndex[i];
+                dp_result[i][j] = dp_result[last][j-WCET_now];
                 dp_result[i][j].insert(id_now);
             }
+            //cout << i << "," << j << ":" << temp1 << "," << temp2 << "(" << beforeIndex[i] << ")" << endl;
+
         }
     }
     dp_return result;
@@ -555,7 +581,7 @@ void z_approx(sched_entry_t& partition, int factor)
 {
 	 double factor_double = static_cast<double>(factor);
 	 int result_WCET = 1, result_period = 1;
-	 double af = partition.getAF();
+	 double af = static_cast<double>(partition.wcet) / static_cast<double>(partition.period); //partition.getAF();
 	 if(af==0)
 	 {
 	 	return;
