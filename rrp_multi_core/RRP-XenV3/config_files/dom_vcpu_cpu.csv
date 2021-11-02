@@ -1,0 +1,13 @@
+Name,Domain ID,Domain UUID,VCPU,CPU
+Domu6,2,25cd330a-0ae8-4068-a0d2-708367dad50c,0,3
+Domu6,2,25cd330a-0ae8-4068-a0d2-708367dad50c,1,5
+Domu6,2,25cd330a-0ae8-4068-a0d2-708367dad50c,2,7
+Domu6,2,25cd330a-0ae8-4068-a0d2-708367dad50c,3,1
+Domu7,3,8d71720d-68fb-4cfc-9b4e-026ce456a6ad,0,3
+Domu7,3,8d71720d-68fb-4cfc-9b4e-026ce456a6ad,1,5
+Domu7,3,8d71720d-68fb-4cfc-9b4e-026ce456a6ad,2,7
+Domu7,3,8d71720d-68fb-4cfc-9b4e-026ce456a6ad,3,1
+Domu8,4,a8f818d6-daad-4120-8996-586db0dc5438,0,7
+Domu8,4,a8f818d6-daad-4120-8996-586db0dc5438,1,1
+Domu8,4,a8f818d6-daad-4120-8996-586db0dc5438,2,3
+Domu8,4,a8f818d6-daad-4120-8996-586db0dc5438,3,5

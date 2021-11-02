@@ -57,15 +57,17 @@ unordered_set<int> getPCPUs(string CPUsFileName);
 bool validateVCPUInfo(const vector<sched_entry_t> & VCPUs, int vcpuNum, const unordered_set<int>& PCPUs);
 string generateNewID(string domainID, string VCPUId);
 void parseID(string IDNow, string& domainID, int &VCPUID);
+unordered_map<string, unordered_map<string, string>> getCPUMap(string mappingFileName);
 
 // schedule generation functions --> to be added
 bool cmpVCPUs(const sched_entry_t& a, const sched_entry_t& b);
 int lcm(int a, int b);
-bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_length);
+bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_length, unordered_map<string, unordered_map<string, string> >& CPUMap);
 dp_return dp_single(vector<sched_entry_t> partition_list, int factor);
 void z_approx(sched_entry_t& partition, int factor);
 double approximate_value(double value);
 vector<string> CSG(vector<sched_entry_t> partition_list, int factor);
+string changeID(string id, int CPU, unordered_map<string, unordered_map<string, string> >& CPUMap);
 
 bool check_delta(unordered_set<int> avail_set, vector<int> standard_p, int delta, int p);
 int find_delta(unordered_set<int> avail_timeslices, int p, int q, int q_left);
@@ -90,15 +92,19 @@ int main(int argc, char* argv[])
 	string poolIDFile = "./config_files/pool_id.txt";
 	string CPUFile = "./config_files/rrp_cpus_list.txt";
 	string domainFile = "./config_files/uuid_info.txt";
+    string mappingFile = "./config_files/dom_vcpu_cpu.csv";
 	if(argc >= 2)
 		poolIDFile = string(argv[1]);
 	if(argc >= 3)
 		CPUFile = string(argv[2]);
 	if(argc >= 4)
 		domainFile = string(argv[3]);
+    if(argc >= 5)
+        mappingFile = string(argv[4]);
 	int poolID = getPoolID(poolIDFile);
 	unordered_set<int> PCPUs = getPCPUs(CPUFile);
 	vector<domain> domains = getDomainInfo(domainFile);
+    auto CPUMap = getCPUMap(mappingFile);
 	vector<sched_entry_t> VCPUs;
 	for(int i=0; i<domains.size(); i++)
 	{
@@ -117,7 +123,7 @@ int main(int argc, char* argv[])
 	vector<int> PCPUVec;
 	for(auto id:PCPUs)
 		PCPUVec.push_back(id);
-	MulZ_ILO(VCPUs, PCPUVec, 30);
+	MulZ_ILO(VCPUs, PCPUVec, 30, CPUMap);
 	/*
 	// preparations needed for MulZ, not needed for MulZ-ILO
 	// sort the vcpus by their availability factors 
@@ -362,6 +368,40 @@ void parseID(string IDNow, string& domainID, int &VCPUID)
     VCPUID = atoi(IDNow.substr(pos+1).c_str());
 }
 
+unordered_map<string, unordered_map<string, string>> getCPUMap(string mappingFileName)
+{
+    unordered_map<string, unordered_map<string, string>> CPUMap;
+    FILE* filer = fopen(mappingFileName.c_str(), "r");
+    if(filer == NULL)
+    {
+        fprintf(stderr, "Cannot open file %s\n", mappingFileName.c_str());
+    }
+
+    const char s[2] = ",";
+    char *token;
+    if(filer != NULL)
+    {
+        char line[200];
+        while(fgets(line, sizeof(line), filer)!= NULL)
+        {
+            // first token is the domain name
+            token = strtok(line, s);
+            token = strtok(NULL, s);
+            token = strtok(NULL, s);
+            string domID(token);
+            token = strtok(NULL, s);
+            string vcpuID(token);
+            token = strtok(NULL, s);
+            string pcpuID(token);
+            pcpuID.pop_back();
+            CPUMap[domID][pcpuID] = vcpuID;
+            //cout << domID << " , " << pcpuID << " , " << vcpuID << endl;
+        }
+    }
+    return CPUMap;
+
+}
+
 /* ************* MULZ_ILO ************
  * @param: sched_entry_t* partitions: An array of struct sched_entry_t, which stores the information of partitions.
  * @param: pcpu* pc: An array of struct pcpu.
@@ -370,7 +410,7 @@ void parseID(string IDNow, string& domainID, int &VCPUID)
  * @return: unordered_map<int, vector<sched_entry_t>> schedule: The final schedule for each cpu
  * Credits: Guangli Dai, Pavan Kumar Paluri
  * ********************************/
-bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_length)
+bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_length, unordered_map<string, unordered_map<string, string> >& CPUMap)
 {
     int factors[4]= {3,4,5,7};
     unordered_map<int, vector<string>> results;
@@ -401,7 +441,6 @@ bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_l
                 max_s = temp_result.af_sum;
                 chosen_ps = temp_result.ids;
                 factor_used = factor;
-
             }
         }
 
@@ -425,6 +464,12 @@ bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_l
         printEntries(VCPUs_now);
         cout << "Using Factor: " << factor_used << endl;
         vector<string> result = CSG(VCPUs_now, factor_used);
+        for(auto& id:result)
+        {
+            //cout << "Before: " << id;
+            id = changeID(id, PCPUs[i], CPUMap);
+            //cout << "After: " << id << endl;
+        }
         results[PCPUs[i]] = result;
     }
 
@@ -439,9 +484,9 @@ bool MulZ_ILO(vector<sched_entry_t>& VCPUs, vector<int>& PCPUs, int time_slice_l
     	for(auto id:results[PCPUs[i]])
     	{
     		cout << id << " , ";
-		schedule_out << id << ",";
+		    schedule_out << id << ",";
     	}
-	schedule_out << "\n";
+	    schedule_out << "\n";
     	cout << endl;
     	//printEntries(results[PCPUs[i].cpu_id]);
     }
@@ -463,7 +508,7 @@ dp_return dp_single(vector<sched_entry_t> partition_list, int factor)
     //cout << "Inside dp_single: "<<endl;
     //printEntries(partition_list);
     // set up the before list
-    cout << factor <<endl;
+    //cout << factor <<endl;
     vector<int> beforeIndex;
     beforeIndex.push_back(-1);
     int indexBefore = -1, vcpuNow;
@@ -708,6 +753,15 @@ vector<string> CSG(vector<sched_entry_t> partition_list, int factor)
     return schedule;
 }
 
+string changeID(string ID, int CPU, unordered_map<string, unordered_map<string, string> >& CPUMap)
+{
+    if(ID=="-1")
+        return ID;
+    int index = ID.find(":");
+    string newID = ID.substr(0, index);
+    newID += ":" + CPUMap[newID][to_string(CPU)];
+    return newID;
+}
 
 /* ********* lcm ************
  * Returns the least common multiple of integers num1 and num2.

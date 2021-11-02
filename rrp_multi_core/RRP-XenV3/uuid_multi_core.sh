@@ -41,7 +41,8 @@ else
         done
         if [ $? -eq 0 ]; then
                 echo " UUIDs of domain(s) and cpupool ID bought into simulation file"
-		g++ $(pwd)/RRP-schedule.cpp -std=c++11 -o sched
+		./extract_vcpu_info.sh ${DEFAULT_DIR}
+        g++ $(pwd)/RRP-schedule.cpp -std=c++11 -o sched
                 #gcc $(pwd)/rrp_sched_entry_mc.c -lxenctrl -lm -luuid -o sched_entry_mc -L /usr/local/lib 2>/dev/null
                 if [ $? -eq 0 ]; then
                         echo "aaf schedul entries are set successfully!!"
