@@ -48,7 +48,7 @@ else
                         echo "aaf schedul entries are set successfully!!"
                         echo "----proceeding with execution---"
 			#rm -f out.txt
-			#./sched ${POOLID_INFO} $DEFAULT_DIR/pool_uuid/rrp_cpus_list.txt ${UUID_INFO}
+			./sched ${POOLID_INFO} $DEFAULT_DIR/pool_uuid/rrp_cpus_list.txt ${UUID_INFO}
 			gcc set_schedule.c -lxenctrl -lm -luuid -o sched_entry_mc -L /usr/local/lib -o set_sched
 			./set_sched
 

@@ -75,7 +75,19 @@ void getScheduleEntry(char* line, struct xen_sysctl_aaf_schedule* s_now)
 		else
 		{
 			//strcpy(s_now->schedule[counter].dom_handle, token);
-			ret_val = uuid_parse(token, s_now->schedule[counter].dom_handle);
+			char temp[100];
+			strcpy(temp, token);
+			printf("This entry: %s\n", temp);
+			char domId[100], vcpu[100];
+			char * mid = strchr(temp, ':');
+			*mid = '\0';
+			strcpy(domId, temp);
+			strcpy(vcpu, mid+1);	
+			printf("DomID:%s; ", domId);
+			printf("VCPU:%s\n", vcpu);
+			ret_val = uuid_parse(domId, s_now->schedule[counter].dom_handle);
+			s_now->schedule[counter].vcpu_id = atoi(vcpu);
+			//ret_val = uuid_parse(token, s_now->schedule[counter].dom_handle);
                 	if(ret_val < 0)
                 	{
                         	printf("Wrong in parsing the uuid: %s\n", token);
@@ -85,6 +97,7 @@ void getScheduleEntry(char* line, struct xen_sysctl_aaf_schedule* s_now)
 		}
 		//printf("Entry stored: %s\n", s_now->schedule[counter].dom_handle);
 		//printf("Entry stored: %X\n", *s_now->schedule[counter].dom_handle);
+		/*
 		char temp[20];
 		sprintf(temp, "%X", *s_now->schedule[counter].dom_handle);
 		int CPU = s_now->cpu_id;
@@ -147,6 +160,7 @@ void getScheduleEntry(char* line, struct xen_sysctl_aaf_schedule* s_now)
                                 s_now->schedule[counter].vcpu_id = 100;
                         }
 		}
+		*/
 		s_now->schedule[counter].wcet = TIME_SLICE_LENGTH;
 		//s_now->schedule[counter].vcpu_id = 0;
 		counter ++;
@@ -219,7 +233,7 @@ void parse(char* fileName)
 		printf("\n");
 		int cpu_pool_id = poolid("config_files/pool_uuid/pool_id.txt");
 		// set schedule here
-#define RRP_SCHED_SET_ENABLE
+//#define RRP_SCHED_SET_ENABLE
 #ifdef RRP_SCHED_SET_ENABLE
             	int set_result = xc_sched_aaf_schedule_set(xci, cpu_pool_id, &sched_aaf[i]);
 	    	printf("------------------------------\n");
