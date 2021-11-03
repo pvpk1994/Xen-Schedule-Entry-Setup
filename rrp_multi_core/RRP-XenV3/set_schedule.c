@@ -70,8 +70,8 @@ void getScheduleEntry(char* line, struct xen_sysctl_aaf_schedule* s_now)
 			printf("%d\n", token[36]);
 		if(strcmp(token, "-1")==0 || strcmp(token, " -1")==0)
 		{
-			//strcpy(s_now->schedule[counter].dom_handle, "");
-			strcpy(s_now->schedule[counter].dom_handle, "0");
+			strcpy(s_now->schedule[counter].dom_handle, "");
+			//strcpy(s_now->schedule[counter].dom_handle, "0");
 			s_now->schedule[counter].vcpu = 0;
 		}
 		else
