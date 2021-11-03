@@ -70,7 +70,9 @@ void getScheduleEntry(char* line, struct xen_sysctl_aaf_schedule* s_now)
 			printf("%d\n", token[36]);
 		if(strcmp(token, "-1")==0 || strcmp(token, " -1")==0)
 		{
-			strcpy(s_now->schedule[counter].dom_handle, "");
+			//strcpy(s_now->schedule[counter].dom_handle, "");
+			strcpy(s_now->schedule[counter].dom_handle, "0");
+			s_now->schedule[counter].vcpu = 0;
 		}
 		else
 		{
@@ -82,18 +84,17 @@ void getScheduleEntry(char* line, struct xen_sysctl_aaf_schedule* s_now)
 			char * mid = strchr(temp, ':');
 			*mid = '\0';
 			strcpy(domId, temp);
-			strcpy(vcpu, mid+1);	
+			strcpy(vcpu, mid+1);
 			printf("DomID:%s; ", domId);
 			printf("VCPU:%s\n", vcpu);
 			ret_val = uuid_parse(domId, s_now->schedule[counter].dom_handle);
 			s_now->schedule[counter].vcpu_id = atoi(vcpu);
 			//ret_val = uuid_parse(token, s_now->schedule[counter].dom_handle);
-                	if(ret_val < 0)
-                	{
-                        	printf("Wrong in parsing the uuid: %s\n", token);
+        	if(ret_val < 0)
+        	{
+            	printf("Wrong in parsing the uuid: %s\n", token);
 				return;
-                	}
-
+        	}
 		}
 		//printf("Entry stored: %s\n", s_now->schedule[counter].dom_handle);
 		//printf("Entry stored: %X\n", *s_now->schedule[counter].dom_handle);
