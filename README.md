@@ -75,7 +75,7 @@ RRP-Xen Version 3.0 per-VCPU information
 ```extract_vcpu_info.sh``` integrates ```xl vcpu-list``` and ```xl list -c -v``` to display exhaustive VCPU information of all RRP-Xen V3.0 operated VCPUs.
 
 Following is an Example that shows detailed per-VCPU information of RRP-Xen V3.0:
-| Name  | Domain ID | Domain UUID                          | VCPU | CPU |
+| Name  | Domain ID | DomU Guest Handler                   | VCPU | CPU |
 |-------|-----------|--------------------------------------|------|-----|
 | Domu6 | 1         | a8479b65-496f-4b5b-a08a-d4f562681990 | 0    | 5   |
 | Domu6 | 1         | a8479b65-496f-4b5b-a08a-d4f562681990 | 1    | 1   |
